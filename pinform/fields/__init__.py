@@ -45,6 +45,8 @@ class IntegerField(Field):
 class FloatField(Field):
 
     def __set__(self, instance, value):
+        if value is not None and isinstance(value,int):
+            value=float(value)
         if value is not None and not isinstance(value, float):
             raise TypeError(instance, self.name, float, value)
         super().__set__(instance, value)
