@@ -3,7 +3,7 @@
 PInfORM is an Object/TimeSeries Mapping layer for using [InfluxDB](https://www.influxdata.com/) in python.
 
 Tested with:
-* python 3.6+
+* Python 3.6+
 * InfluxDB 1.7.3
 
 Use the following command to install using pip:
