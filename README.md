@@ -1,6 +1,7 @@
 # Pinform: An InfluxDB ORM (OSTM) for Python
 
 PInfORM is an Object/TimeSeries Mapping layer for using [InfluxDB](https://www.influxdata.com/) in python.
+(Tested with python 3.6+, and InfluxDB 1.7.3)
 
 Use the following command to install using pip:
 ```
