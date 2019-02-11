@@ -118,6 +118,8 @@ class OHLC(Measurement):
 ### Query Field and Pandas Series
 Use `get_fields_as_series` function from InfluxClient to get fields of specific measurement class as Pandas Series. It's also possible to aggregate data and group by time. This function returnes a `dict` with aggregated field names as keys and pandas series as values.
 ```
+from pinform.client import AggregationMode
+
 series_dict = cli.get_fields_as_series(OHLC, 
                 field_aggregations={'close': [AggregationMode.MEAN, AggregationMode.STDDEV]},
                 tags={'symbol': 'AAPL'},
