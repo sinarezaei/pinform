@@ -34,6 +34,12 @@ from pinform.client import InfluxClient
 cli = InfluxClient(host="localhost", port=8086, database_name="defaultdb")
 ```
 
+If the database needs authentication, use:
+```
+cli = InfluxClient(host="localhost", port=8086, database_name="defaultdb", username='your db username', password='your db password')
+```
+
+
 ### Save and Retrieve Points
 To save data in database, use `save_points` or `save_dataframe` functions of InfluxClient:
 ```
