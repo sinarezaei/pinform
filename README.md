@@ -123,6 +123,7 @@ from pinform.client import AggregationMode
 series_dict = cli.get_fields_as_series(OHLC, 
                 field_aggregations={'close': [AggregationMode.MEAN, AggregationMode.STDDEV]},
                 tags={'symbol': 'AAPL'},
+                time_range=(start_datetime, end_datetime),
                 group_by_time_interval='10d')
 mean_close_series = series_dict['mean_close']
 stddev_close_series = series_dict['stddev_close']
