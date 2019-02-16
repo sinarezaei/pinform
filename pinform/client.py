@@ -333,7 +333,7 @@ class InfluxClient:
         :return: list of tag values
         """
         # https://docs.influxdata.com/influxdb/v1.7/query_language/schema_exploration/#show-tag-values
-        query_string = "show tag values" + ("" if measurement is None else ("from " + Measurement.get_name(measurement, name_resolution_tags=name_resolution_tags))) \
+        query_string = "show tag values" + ("" if measurement is None else (" from " + Measurement.get_name(measurement, name_resolution_tags=name_resolution_tags))) \
                        + " " + ('with key = "{tag_name}"'.format(tag_name=tag_name))
 
         result_set = self.db_client.query(query_string)
