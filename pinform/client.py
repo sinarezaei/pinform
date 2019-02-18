@@ -178,7 +178,7 @@ class InfluxClient:
 
     def load_points(self, measurement_type: Type[T], tags: Optional[Dict[str, str]] = None,
                     time_range: Union[datetime.date, Tuple[datetime.datetime, datetime.datetime]] = None,
-                    limit: Optional[int] = None) -> List[T]:
+                    limit: Optional[int] = None, tz: datetime.tzinfo = pytz.utc) -> List[T]:
         # noinspection SqlNoDataSourceInspection
         query_string = "SELECT * FROM {measurement_name}".format(measurement_name=Measurement.get_name(measurement_type, name_resolution_tags=tags))
 
@@ -226,7 +226,7 @@ class InfluxClient:
                 data_points[f_name] = item.get(f_name)
             for t_name in tag_names:
                 data_points[t_name] = item.get(t_name)
-            data_points['time_point'] = parse_influx_str_time(item.get('time'))
+            data_points['time_point'] = parse_influx_str_time(item.get('time'), tz)
             # noinspection PyCallingNonCallable
             measurements_list.append(measurement_type(**data_points))
 
@@ -234,8 +234,8 @@ class InfluxClient:
 
     def load_points_as_dataframe(self, measurement: Type[T], tags: Optional[Dict[str, str]] = None,
                                  time_range: Union[datetime.date, Tuple[datetime.datetime, datetime.datetime]] = None,
-                                 limit: Optional[int] = None) -> DataFrame:
-        return MeasurementUtils.to_dataframe(self.load_points(measurement, tags, time_range, limit))
+                                 limit: Optional[int] = None, tz: datetime.tzinfo = pytz.utc) -> DataFrame:
+        return MeasurementUtils.to_dataframe(self.load_points(measurement, tags, time_range, limit, tz))
 
     def get_fields_as_series(self, measurement: Type[T], field_aggregations: Dict[str, Optional[List[AggregationMode]]],
                              tags: Optional[Dict[str, str]] = None, group_by_time_interval: Optional[str] = None,
@@ -310,8 +310,7 @@ class InfluxClient:
 
         points = [p for p in self.db_client.query(query_string).get_points()]
         if group_by_time_interval is not None:
-            times = [window_index_location.get_time_point_of_window(
-                parse_influx_str_time(p.get('time'), tz), str(group_by_time_interval)) for p in points]
+            times = [window_index_location.get_time_point_of_window(parse_influx_str_time(p.get('time'), tz), str(group_by_time_interval)) for p in points]
         else:
             times = [parse_influx_str_time(p.get('time'), tz) for p in points]
 
