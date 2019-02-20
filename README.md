@@ -1,3 +1,5 @@
+![alt text][pypi_version] ![alt text][licence_version]
+
 # Pinform: An InfluxDB ORM (OSTM) for Python
 
 PInfORM is an Object/TimeSeries Mapping layer for connecting to [InfluxDB](https://www.influxdata.com/) in python.
@@ -132,3 +134,8 @@ series_dict = cli.get_fields_as_series(OHLC,
 mean_close_series = series_dict['mean_close']
 stddev_close_series = series_dict['stddev_close']
 ```
+
+
+
+[pypi_version]: https://img.shields.io/pypi/v/pinform.svg "PYPI version"
+[licence_version]: https://img.shields.io/badge/license-MIT%20v2-brightgreen.svg "MIT Licence"
