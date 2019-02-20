@@ -102,7 +102,7 @@ class WeatherInfo(Measurement):
   class Meta:
     measurement_name = 'weather_info'
   
-  condition = EnumStringField(enunm=WeatherCondition, null=False)
+  condition = EnumStringField(enum=WeatherCondition, null=False)
 
 ```
 
