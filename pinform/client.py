@@ -166,6 +166,9 @@ class InfluxClient:
         except:
             logger.debug(traceback.format_exc())
 
+    def close(self):
+        self.db_client.close()
+
     def save_points(self, items: List[T]) -> bool:
         items_list = []
         for item in items:
