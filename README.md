@@ -32,6 +32,12 @@ class OHLC(Measurement):
   close = FloatField(null=False)
 ```
 
+### Create Measurement Instance
+First, create your measurement model in 
+```python
+today_ohlc = OHLC(time_point=datetime.datetime.now(), symbol='AAPL', open=80.2, high=86.0, low=78.9, close=81.25)
+```
+
 ### Create InfluxClient
 Then you must create an instance of `InfluxClient` to connect to database:
 ```python
