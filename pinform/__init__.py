@@ -293,6 +293,7 @@ class MeasurementUtils:
 
     @staticmethod
     def from_dataframe(df: DataFrame, cls: type) -> List[Measurement]:
+        assert df is not None, "Null DataFrame passed to create list of measurements"
         measurements = []
         m_fields = Measurement.get_fields(cls=cls)
         m_tags = Measurement.get_tags(cls=cls)
