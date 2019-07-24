@@ -1,6 +1,6 @@
 ![alt text][pypi_version] ![alt text][licence_version]
 
-# Pinform: An InfluxDB ORM (OSTM) for Python
+# Pinform: An InfluxDB ORM (OTSM) for Python
 
 PInfORM is an Object/TimeSeries Mapping layer for connecting to [InfluxDB](https://www.influxdata.com/) in python.
 
