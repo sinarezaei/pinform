@@ -152,8 +152,8 @@ class AggregationWindowIndex(Enum):
         return int(group_by_time_str[0:len(group_by_time_str) - 1]), AggregationTimeUnit.from_str(unit)
 
 
-def parse_influx_str_time(time_str: str, tz: datetime.tzinfo = pytz.utc) -> datetime.datetime:
-    return datetime.datetime.strptime(time_str, '%Y-%m-%dT%H:%M:%SZ').astimezone(tz)
+def parse_influx_str_time(time_str: str, tz: pytz.UTC = pytz.utc) -> datetime.datetime:
+    return tz.localize(datetime.datetime.strptime(time_str, '%Y-%m-%dT%H:%M:%SZ'))
     # return dateutil.parser.parse(time_str).astimezone(tz)
 
 
@@ -184,7 +184,7 @@ class InfluxClient:
     def load_points(self, measurement_type: Type[T], name_components: Optional[Dict[str, str]] = None,
                     tags: Optional[Dict[str, str]] = None,
                     time_range: Union[datetime.date, Tuple[datetime.datetime, datetime.datetime]] = None,
-                    limit: Optional[int] = None, tz: datetime.tzinfo = pytz.utc) -> List[T]:
+                    limit: Optional[int] = None, tz: pytz.UTC = pytz.utc) -> List[T]:
         # noinspection SqlNoDataSourceInspection
         query_string = "SELECT * FROM {measurement_name}".format(measurement_name=Measurement.get_name(measurement_type, name_components=name_components))
 
@@ -289,9 +289,10 @@ class InfluxClient:
                              fill_mode: Optional[FillMode] = None, fill_number: Optional[int] = None,
                              window_index_location: AggregationWindowIndex = AggregationWindowIndex.START,
                              time_range: Union[datetime.date, Tuple[datetime.datetime, datetime.datetime]] = None,
-                             limit: Optional[int] = None, tz: datetime.tzinfo = pytz.utc) -> Dict[str, Series]:
+                             limit: Optional[int] = None, tz: pytz.UTC = pytz.utc) -> Dict[str, Series]:
         if field_aggregations is None or len(field_aggregations.items()) == 0:
             raise Exception('Null or invalid field aggregations')
+
 
         if fill_mode is not None and fill_mode == FillMode.NUMBER:
             assert fill_number is not None, 'Null fill number passed with number fill mode'
