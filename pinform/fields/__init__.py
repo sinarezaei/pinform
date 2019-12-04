@@ -45,8 +45,8 @@ class IntegerField(Field):
 class FloatField(Field):
 
     def __set__(self, instance, value):
-        if value is not None and isinstance(value,int):
-            value=float(value)
+        if value is not None and isinstance(value, int):
+            value = float(value)
         if value is not None and not isinstance(value, float):
             raise TypeError(instance, self.name, float, value)
         super().__set__(instance, value)
@@ -91,7 +91,7 @@ class MultipleChoiceStringField(Field):
         if options is None:
             raise Exception("Null options passed for multiple choice string field")
         if not (isinstance(options, list) or isinstance(options, set)):
-            raise Exception("Invalid type for options passed for multiple choice string field, must be either set or list but found " + str(type(options)) )
+            raise Exception("Invalid type for options passed for multiple choice string field, must be either set or list but found " + str(type(options)))
         if len(options) == 0:
             raise Exception("Empty options passed for enum string field")
         if len(options) != len(set(options)):
@@ -178,4 +178,3 @@ class EnumIntegerField(Field):
             if not isinstance(option, int):
                 raise Exception("Invalid value in enum integer field, " + str(option) + ', expected int value but found ' + str(type(option)))
         self.options = set(options)
-

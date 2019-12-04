@@ -10,6 +10,7 @@ import dateutil
 import traceback
 from enum import Enum
 import re
+import time
 
 logger = logging.getLogger('kappa')
 T = TypeVar('T', bound=Measurement)
@@ -152,7 +153,8 @@ class AggregationWindowIndex(Enum):
 
 
 def parse_influx_str_time(time_str: str, tz: datetime.tzinfo = pytz.utc) -> datetime.datetime:
-    return dateutil.parser.parse(time_str).astimezone(tz)
+    return datetime.datetime.strptime(time_str, '%Y-%m-%dT%H:%M:%SZ').astimezone(tz)
+    # return dateutil.parser.parse(time_str).astimezone(tz)
 
 
 class InfluxClient:
@@ -179,11 +181,12 @@ class InfluxClient:
         points = MeasurementUtils.from_dataframe(df, measurement_type)
         return self.save_points(points)
 
-    def load_points(self, measurement_type: Type[T], tags: Optional[Dict[str, str]] = None,
+    def load_points(self, measurement_type: Type[T], name_components: Optional[Dict[str, str]] = None,
+                    tags: Optional[Dict[str, str]] = None,
                     time_range: Union[datetime.date, Tuple[datetime.datetime, datetime.datetime]] = None,
                     limit: Optional[int] = None, tz: datetime.tzinfo = pytz.utc) -> List[T]:
         # noinspection SqlNoDataSourceInspection
-        query_string = "SELECT * FROM {measurement_name}".format(measurement_name=Measurement.get_name(measurement_type, name_resolution_tags=tags))
+        query_string = "SELECT * FROM {measurement_name}".format(measurement_name=Measurement.get_name(measurement_type, name_components=name_components))
 
         and_conditions_list = []
         if tags is not None:
@@ -212,7 +215,11 @@ class InfluxClient:
         measurement_tags = Measurement.get_tags(cls=measurement_type)
         measurement_fields = Measurement.get_fields(cls=measurement_type)
 
+        ts1 = time.monotonic()
         result = [p for p in self.db_client.query(query_string).get_points()]
+        ts2 = time.monotonic()
+
+        print('query results in ' + str(ts2-ts1) + ' seconds')
 
         measurements_list = []
         field_names = []
@@ -223,15 +230,50 @@ class InfluxClient:
         for tag_name, t in measurement_tags.items():
             tag_names.append(tag_name)
 
+        print('field names ' + str(field_names))
+        print('tag names ' + str(tag_names))
+
+        total_field_finding = 0
+        total_creation = 0
+        total_appending = 0
+        total_parsing = 0
+        ts3 = time.monotonic()
         for item in result:
-            data_points = {}
-            for f_name in field_names:
-                data_points[f_name] = item.get(f_name)
-            for t_name in tag_names:
-                data_points[t_name] = item.get(t_name)
-            data_points['time_point'] = parse_influx_str_time(item.get('time'), tz)
+            t5 = time.monotonic()
+            data_points = {**{f: item[f] for f in field_names}, **{t: item[t] for t in tag_names}, 'time_point': parse_influx_str_time(item.get('time'), tz)}
+            # for f_name in field_names:
+            #     data_points[f_name] = item[f_name]
+            # for t_name in tag_names:
+            #     data_points[t_name] = item[t_name]
+            # print(item.get('time'))
+            # t11 = time.monotonic()
+            # dt = parse_influx_str_time(item.get('time'), tz)
+            # t12 = time.monotonic()
+            # total_parsing += t12 - t11
+            # data_points['time_point'] = dt
+            # data_points['time_point'] = parse_influx_str_time(item.get('time'), tz)
             # noinspection PyCallingNonCallable
-            measurements_list.append(measurement_type(**data_points))
+            t6 = time.monotonic()
+            total_field_finding += t6-t5
+
+            t7 = time.monotonic()
+            iitem = measurement_type(**data_points)
+            t8 = time.monotonic()
+            total_creation += t8 - t7
+
+            t9 = time.monotonic()
+            measurements_list.append(
+                iitem
+            )
+            t10 = time.monotonic()
+            total_appending += t10-t9
+        ts4 = time.monotonic()
+
+        print('create list in ' + str(ts4 - ts3) + ' seconds')
+        print('total_field_finding  ' + str(total_field_finding) + ' seconds')
+        print('total_creation  ' + str(total_creation) + ' seconds')
+        print('total_appending  ' + str(total_appending) + ' seconds')
+        print('total_parsing  ' + str(total_parsing) + ' seconds')
 
         return measurements_list
 
@@ -240,7 +282,9 @@ class InfluxClient:
                                  limit: Optional[int] = None, tz: datetime.tzinfo = pytz.utc) -> DataFrame:
         return MeasurementUtils.to_dataframe(self.load_points(measurement, tags, time_range, limit, tz))
 
-    def get_fields_as_series(self, measurement: Type[T], field_aggregations: Dict[str, Optional[List[AggregationMode]]],
+    def get_fields_as_series(self, measurement: Type[T],
+                             field_aggregations: Dict[str, Optional[List[AggregationMode]]],
+                             name_components: Optional[Dict[str, str]] = None,
                              tags: Optional[Dict[str, str]] = None, group_by_time_interval: Optional[str] = None,
                              fill_mode: Optional[FillMode] = None, fill_number: Optional[int] = None,
                              window_index_location: AggregationWindowIndex = AggregationWindowIndex.START,
@@ -260,7 +304,7 @@ class InfluxClient:
 
         query_string = "SELECT "
 
-        measurement_name = Measurement.get_name(measurement, name_resolution_tags=tags)
+        measurement_name = Measurement.get_name(measurement, name_components=name_components)
         fields = Measurement.get_fields(measurement)
 
         aggregated_field_names = []
@@ -323,7 +367,7 @@ class InfluxClient:
 
         return result_dict
 
-    def get_distinct_existing_tag_values(self, tag_name: str, measurement: Optional[Type[T]] = None, name_resolution_tags: Dict[str, str] = None):
+    def get_distinct_existing_tag_values(self, tag_name: str, measurement: Optional[Type[T]] = None, name_components: Dict[str, str] = None):
         """
         This function returns the list of existing tag values inside db.
 
@@ -331,11 +375,11 @@ class InfluxClient:
 
         :param measurement: optional measurement class
         :param tag_name: name of tag
-        :param name_resolution_tags: tags for finding name of measurement with dynamic name
+        :param name_components: name components for finding name of measurement with dynamic name
         :return: list of tag values
         """
         # https://docs.influxdata.com/influxdb/v1.7/query_language/schema_exploration/#show-tag-values
-        query_string = "show tag values" + ("" if measurement is None else (" from " + Measurement.get_name(measurement, name_resolution_tags=name_resolution_tags))) \
+        query_string = "show tag values" + ("" if measurement is None else (" from " + Measurement.get_name(measurement, name_components=name_components))) \
                        + " " + ('with key = "{tag_name}"'.format(tag_name=tag_name))
 
         result_set = self.db_client.query(query_string)

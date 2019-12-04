@@ -12,16 +12,39 @@ from .utils import dromedary_to_underline, underline_to_dromedary
 name = "pinform"
 
 
+class MeasurementNameComponent(object):
+
+    # noinspection PyProtectedMember
+    def __get__(self, instance, owner)-> str:
+        if instance is None:
+            raise Exception('Cannot access measurement name component without instance')
+        return instance._data[self.name]
+
+    # noinspection PyProtectedMember
+    def __set__(self, instance, value):
+        if instance is None:
+            raise Exception('Cannot access tag without instance')
+        assert value is not None, "Null value for not measurement name component : " + str(self.name)
+        instance._data[self.name] = value
+
+    def __init__(self, name: Optional[str] = None):
+        super(MeasurementNameComponent, self).__init__()
+        self.name = name
+
+    def __add__(self, other):
+        return str(self) + str(other)
+
+
 class MeasurementMeta(type):
     # noinspection PyInitNewSignature,PyUnresolvedReferences,PyTypeChecker,SpellCheckingInspection,PyMethodParameters
-    def __new__(cls, name, bases, attrs: Dict[str, Any]):
+    def __new__(cls, cls_name, bases, attrs: Dict[str, Any]):
         m_module = attrs.pop('__module__')
         new_attrs = {'__module__': m_module}
         class_cell = attrs.pop('__classcell__', None)
         if class_cell is not None:
             new_attrs['__classcell__'] = class_cell
 
-        new_class = super(MeasurementMeta, cls).__new__(cls, name, bases, new_attrs)
+        new_class = super(MeasurementMeta, cls).__new__(cls, cls_name, bases, new_attrs)
 
         attr_meta = attrs.pop('Meta', None)
         if not attr_meta:
@@ -31,7 +54,7 @@ class MeasurementMeta(type):
 
         measurement_name = getattr(meta, 'measurement_name', None)
         if measurement_name is None:
-            measurement_name = dromedary_to_underline(name)
+            measurement_name = dromedary_to_underline(cls_name)
         setattr(new_class, 'measurement_name', measurement_name)
 
         for field_name, field in attrs.items():
@@ -43,24 +66,37 @@ class MeasurementMeta(type):
                 if field.name is None:
                     field.name = field_name
                 setattr(new_class, field.name, field)
+            elif isinstance(field, MeasurementNameComponent):
+                if field.name is None:
+                    field.name = field_name
+                setattr(new_class, field.name, field)
             else:
                 setattr(new_class, field_name, field)
 
         # noinspection PyUnusedLocal
         def my_custom_init(instance_self, time_point: datetime.datetime, *init_args, **init_kwargs):
+            _setattr = setattr
             instance_self._data = {}  # dict.fromkeys(attrs.keys())
             instance_self.time_point = time_point
             tmp_class_dict = instance_self.__class__.__dict__
             model_field_names = [k for k in tmp_class_dict.keys() if isinstance(tmp_class_dict.get(k), Field)]
             model_tag_names = [k for k in tmp_class_dict.keys() if isinstance(tmp_class_dict.get(k), Tag)]
+            model_name_components = [k for k in tmp_class_dict.keys() if isinstance(tmp_class_dict.get(k), MeasurementNameComponent)]
+
+            model_element_names = model_field_names + model_tag_names + model_name_components
+
+            for field_key in model_element_names:
+                if field_key not in init_kwargs.keys():
+                    _setattr(instance_self, field_key, None)
+
             for key, value in init_kwargs.items():
                 if key in model_field_names:
-                    setattr(instance_self, key, value)
+                    _setattr(instance_self, key, value)
                 elif key in model_tag_names:
-                    setattr(instance_self, key, value)
+                    _setattr(instance_self, key, value)
                 elif key == "time_point":
                     if isinstance(value, datetime.datetime):
-                        setattr(instance_self, key, value)
+                        _setattr(instance_self, key, value)
                     else:
                         raise Exception("time_point given is not instance of datetime.datetime  given value:" + str(
                             value) + " type(value):" + str(type(value)))
@@ -127,7 +163,7 @@ class Measurement(six.with_metaclass(MeasurementMeta)):
     def get_field_names(cls) -> List[str]:
         field_names_list = []
         type_dicts = cls.__dict__  # type(self).__dict__
-        for name, field in type_dicts.items():
+        for field_name, field in type_dicts.items():
             if isinstance(field, Field):
                 field_names_list.append(field.name)
         return field_names_list
@@ -136,7 +172,7 @@ class Measurement(six.with_metaclass(MeasurementMeta)):
     def get_tag_names(cls) -> List[str]:
         tag_names_list = []
         type_dicts = cls.__dict__
-        for name, field in type_dicts.items():
+        for field_name, field in type_dicts.items():
             if isinstance(field, Tag):
                 tag_names_list.append(field.name)
         return tag_names_list
@@ -145,7 +181,7 @@ class Measurement(six.with_metaclass(MeasurementMeta)):
     def get_fields(cls) -> Dict[str, Field]:
         fields_dict = {}
         type_dicts = cls.__dict__  # type(self).__dict__
-        for name, field in type_dicts.items():
+        for field_name, field in type_dicts.items():
             if isinstance(field, Field):
                 field_name = field.name
                 fields_dict[field_name] = field
@@ -154,7 +190,7 @@ class Measurement(six.with_metaclass(MeasurementMeta)):
     def get_field_values_as_dict(self) -> Dict[str, Any]:
         fields_dict = {}
         type_dicts = type(self).__dict__
-        for name, field in type_dicts.items():
+        for field_name, field in type_dicts.items():
             if isinstance(field, Field):
                 field_name = field.name
                 field_value = self.__getattribute__(field_name)
@@ -164,7 +200,7 @@ class Measurement(six.with_metaclass(MeasurementMeta)):
     def get_fields_and_field_values_as_dict(self) -> Dict[str, Tuple[Field, Any]]:
         fields_dict = {}
         type_dicts = type(self).__dict__
-        for name, field in type_dicts.items():
+        for field_name, field in type_dicts.items():
             if isinstance(field, Field):
                 field_name = field.name
                 field_value = self.__getattribute__(field_name)
@@ -175,7 +211,7 @@ class Measurement(six.with_metaclass(MeasurementMeta)):
     def get_tags(cls) -> Dict[str, Tag]:
         tags_dict = {}
         type_dicts = cls.__dict__  # type(self).__dict__
-        for name, tag in type_dicts.items():
+        for tag_name, tag in type_dicts.items():
             if isinstance(tag, Tag):
                 tag_name = tag.name if tag.name is not None else name
                 tags_dict[tag_name] = tag
@@ -184,7 +220,7 @@ class Measurement(six.with_metaclass(MeasurementMeta)):
     def get_tag_values_as_dict(self) -> Dict[str, Any]:
         tags_dict = {}
         type_dicts = type(self).__dict__
-        for name, tag in type_dicts.items():
+        for tag_name, tag in type_dicts.items():
             if isinstance(tag, Tag):
                 tag_name = tag.name  # tag.name if tag.name is not None else item[0]
                 tag_value = self.__getattribute__(tag_name)
@@ -194,28 +230,38 @@ class Measurement(six.with_metaclass(MeasurementMeta)):
     def get_tags_and_tag_values_as_dict(self) -> Dict[str, Tuple[Tag, Optional[str]]]:
         tags_dict = {}
         type_dicts = type(self).__dict__
-        for name, tag in type_dicts.items():
+        for tag_name, tag in type_dicts.items():
             if isinstance(tag, Tag):
                 tag_name = tag.name  # tag.name if tag.name is not None else item[0]
                 tag_value = self.__getattribute__(tag_name)
                 tags_dict[tag_name] = (tag, tag_value)
         return tags_dict
 
+    def get_name_component_values_as_dict(self) -> Dict[str, Any]:
+        components_dict = {}
+        type_dicts = type(self).__dict__
+        for component_name, component in type_dicts.items():
+            if isinstance(component, MeasurementNameComponent):
+                component_name = component.name  # tag.name if tag.name is not None else item[0]
+                tag_value = self.__getattribute__(component_name)
+                components_dict[component_name] = tag_value
+        return components_dict
+
     @staticmethod
-    def get_name(cls, name_resolution_tags: Dict[str, str]=None) -> str:
+    def get_name(cls, name_components: Dict[str, str] = None) -> str:
         measurement_name = cls.measurement_name
         name_tags = re.findall('\((.*?)\)', measurement_name)
         for name_tag in name_tags:
-            if name_resolution_tags is None:
-                raise Exception('Name resolution needs a tag named ' + name_tag + ' but null name resolution tags is provided')
-            if name_tag in name_resolution_tags.keys():
-                measurement_name.replace('('+name_tag+')', name_resolution_tags[name_tag])
+            if name_components is None:
+                raise Exception('Measurement name resolution needs a component named ' + name_tag + ' but null name components is provided')
+            if name_tag in name_components.keys():
+                measurement_name.replace('(' + name_tag + ')', name_components[name_tag])
             else:
-                raise Exception('Tag with name '+name_tag+' not provided in name resolution tags for resolving dynamic measurement name')
+                raise Exception('Tag with name ' + name_tag + ' not provided in name resolution tags for resolving dynamic measurement name')
         return measurement_name
 
     def get_measurement_name(self) -> str:
-        return Measurement.get_name(type(self), name_resolution_tags=self.get_tag_values_as_dict())
+        return Measurement.get_name(type(self), name_components=self.get_name_component_values_as_dict())
 
     def get_cli_format(self) -> Dict[str, Any]:
 
@@ -229,11 +275,11 @@ class Measurement(six.with_metaclass(MeasurementMeta)):
             if not tag.null and tag_value is None:
                 raise ValueError("Null value passed for non-nullable tag " + tag.name)
 
-        tags_dict = self.get_tag_values_as_dict()
-        measurement_name = Measurement.get_name(type(self), name_resolution_tags=tags_dict)
+        components_dict = self.get_name_component_values_as_dict()
+        measurement_name = Measurement.get_name(type(self), name_components=components_dict)
         return {
             "measurement": measurement_name,
-            "tags": tags_dict,
+            "tags": self.get_tag_values_as_dict(),
             "time": str(self.time_point),
             "fields": self.get_field_values_as_dict()
         }
@@ -306,14 +352,13 @@ class MeasurementUtils:
         for tag_name, t in m_tags.items():
             tag_names.append(tag_name)
 
-        for index, row in df.iterrows():
-            assert isinstance(index, datetime.datetime), 'Invalid index type, must be datetime'
+        for i in df.index:
             data_points = {}
             for f_name in field_names:
-                data_points[f_name] = row[MeasurementUtils.field_to_dataframe_column_name(f_name)]
+                data_points[f_name] = df.at[i, MeasurementUtils.field_to_dataframe_column_name(f_name)]
             for t_name in tag_names:
-                data_points[t_name] = row[MeasurementUtils.field_to_dataframe_column_name(t_name)]
-            data_points['time_point'] = index
+                data_points[t_name] = df.at[i, MeasurementUtils.field_to_dataframe_column_name(t_name)]
+            data_points['time_point'] = i
             measurements.append(cls(**data_points))
 
         return measurements
