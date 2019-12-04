@@ -117,13 +117,15 @@ class WeatherInfo(Measurement):
 ## Advanced usage
 
 ### Dynamic measurement names
-It is possible to use tags in measurement name wrapped in parenthesis
+It is possible to use 'MeasurementNameComponent's in measurement name wrapped in parenthesis, their value is replaced in the measurement name at runtime.
 ```python
+from pinform import MeasurementNameComponent
+
 class OHLC(Measurement):
   class Meta:
     measurement_name = 'ohlc_(symbol)'
   
-  symbol = Tag(null=False)
+  symbol = MeasurementNameComponent(name='symbol')
   ...
 ```
 
