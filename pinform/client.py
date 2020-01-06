@@ -12,7 +12,7 @@ from enum import Enum
 import re
 import time
 
-logger = logging.getLogger('kappa')
+logger = logging.getLogger('pinform')
 T = TypeVar('T', bound=Measurement)
 
 
@@ -219,7 +219,7 @@ class InfluxClient:
         result = [p for p in self.db_client.query(query_string).get_points()]
         ts2 = time.monotonic()
 
-        print('query results in ' + str(ts2-ts1) + ' seconds')
+        # printx('query results in ' + str(ts2-ts1) + ' seconds')
 
         measurements_list = []
         field_names = []
@@ -230,8 +230,8 @@ class InfluxClient:
         for tag_name, t in measurement_tags.items():
             tag_names.append(tag_name)
 
-        print('field names ' + str(field_names))
-        print('tag names ' + str(tag_names))
+        # printx('field names ' + str(field_names))
+        # printx('tag names ' + str(tag_names))
 
         total_field_finding = 0
         total_creation = 0
@@ -245,7 +245,7 @@ class InfluxClient:
             #     data_points[f_name] = item[f_name]
             # for t_name in tag_names:
             #     data_points[t_name] = item[t_name]
-            # print(item.get('time'))
+            # printx(item.get('time'))
             # t11 = time.monotonic()
             # dt = parse_influx_str_time(item.get('time'), tz)
             # t12 = time.monotonic()
@@ -269,11 +269,11 @@ class InfluxClient:
             total_appending += t10-t9
         ts4 = time.monotonic()
 
-        print('create list in ' + str(ts4 - ts3) + ' seconds')
-        print('total_field_finding  ' + str(total_field_finding) + ' seconds')
-        print('total_creation  ' + str(total_creation) + ' seconds')
-        print('total_appending  ' + str(total_appending) + ' seconds')
-        print('total_parsing  ' + str(total_parsing) + ' seconds')
+        # printx('create list in ' + str(ts4 - ts3) + ' seconds')
+        # printx('total_field_finding  ' + str(total_field_finding) + ' seconds')
+        # printx('total_creation  ' + str(total_creation) + ' seconds')
+        # printx('total_appending  ' + str(total_appending) + ' seconds')
+        # printx('total_parsing  ' + str(total_parsing) + ' seconds')
 
         return measurements_list
 
